@@ -1941,7 +1941,7 @@ Server: Tiny WebServer
 Connection: close
 ```
 
-This is how the `password` sent to `login.cgi` is actually generated:
+This is how the `password` sent to `login.cgi` is actually generated client-side:
 
 <https://github.com/duplicati/duplicati/blob/67c1213a98e9f98659f3d4b78ded82b80ddab8bb/Duplicati/Server/webroot/login/login.js>
 
@@ -1966,9 +1966,9 @@ $.ajax({
 	})
 ```
 
-First `saltedpwd` is the SHA256 hash of the password entered by the user concatenated with the salt. Then `noncedpwd` is the SHA256 hash of the nonce concatenated with `saltedpwd`, which is then sent as the `password` parameter to `login.cgi`.
+First `saltedpwd` is the SHA256 hash of the plaintext password entered by the user concatenated with the salt. Then `noncedpwd` is the SHA256 hash of the nonce concatenated with `saltedpwd`, which is then sent as the `password` parameter to `login.cgi`.
 
-Next, this is where `server-passphrase` is used:
+Next, this is how `server-passphrase` is used on the backend:
 
 <https://github.com/duplicati/duplicati/blob/e927e7230dc5806990614235dca2d64073fd43aa/Duplicati.Library.RestAPI/Database/ServerSettings.cs#L39>
 
@@ -2024,7 +2024,7 @@ public void SetWebserverPassword(string password)
 
 `server-passphrase` is the SHA256 hash of the plaintext password concatenated with `server-passphrase-salt`. This matches the `saltedpwd` variable in `login.js`, with the exception that `saltedpwd` is in hex whereas `server-passphrase` is in Base64.
 
-Now let's see how `WebserverPassword` (i.e. `server-passphrase`) is used:
+Now let's see how `WebserverPassword` (i.e. `server-passphrase`) is used in the authentication handler of the backend:
 
 <https://github.com/duplicati/duplicati/blob/67c1213a98e9f98659f3d4b78ded82b80ddab8bb/Duplicati.Library.RestAPI/WebServer/AuthenticationHandler.cs>
 
@@ -2102,6 +2102,7 @@ else
 			response.ContentType = "application/json";
 			return true;
 		}
+        ...
 ```
 
 We can see that the `password` (i.e. `noncedpwd`) sent to `login.cgi` is compared with the SHA256 hash of a randomly generated nonce concatenated with `WebserverPassword` (i.e. `server-passphrase`).
