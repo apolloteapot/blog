@@ -1099,46 +1099,18 @@ By searching for `docker default ip address range` etc., we can find resources t
 - <https://www.reddit.com/r/docker/comments/s8obru/how_does_docker_assign_ipsubets/>
 - <https://github.com/moby/libnetwork/blob/master/ipamutils/utils.go#L10-L22>
 
-We can check for used subnets using `ip a`:
+An easy way to check for used subnets is `ip route`:
 
 ```shell-session
-juan@unintended.vl@web:~$ ip a
-1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-    inet 127.0.0.1/8 scope host lo
-       valid_lft forever preferred_lft forever
-    inet6 ::1/128 scope host
-       valid_lft forever preferred_lft forever
-2: ens5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9001 qdisc mq state UP group default qlen 1000
-    link/ether 0a:c3:8e:43:af:49 brd ff:ff:ff:ff:ff:ff
-    altname enp0s5
-    inet 10.10.250.166/28 metric 100 brd 10.10.250.175 scope global dynamic ens5
-       valid_lft 3540sec preferred_lft 3540sec
-    inet6 fe80::8c3:8eff:fe43:af49/64 scope link
-       valid_lft forever preferred_lft forever
-3: br-1c74e0922629: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default
-    link/ether 02:42:ea:1d:38:d9 brd ff:ff:ff:ff:ff:ff
-    inet 172.19.0.1/16 brd 172.19.255.255 scope global br-1c74e0922629
-       valid_lft forever preferred_lft forever
-    inet6 fe80::42:eaff:fe1d:38d9/64 scope link
-       valid_lft forever preferred_lft forever
-4: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default
-    link/ether 02:42:df:52:18:6b brd ff:ff:ff:ff:ff:ff
-    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
-       valid_lft forever preferred_lft forever
-5: br-9f7c921da56a: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default
-    link/ether 02:42:f9:15:67:12 brd ff:ff:ff:ff:ff:ff
-    inet 172.18.0.1/16 brd 172.18.255.255 scope global br-9f7c921da56a
-       valid_lft forever preferred_lft forever
-    inet6 fe80::42:f9ff:fe15:6712/64 scope link
-       valid_lft forever preferred_lft forever
-6: br-d2d8c10f2c77: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default
-    link/ether 02:42:f4:72:1c:59 brd ff:ff:ff:ff:ff:ff
-    inet 172.21.0.1/16 brd 172.21.255.255 scope global br-d2d8c10f2c77
-       valid_lft forever preferred_lft forever
-    inet6 fe80::42:f4ff:fe72:1c59/64 scope link
-       valid_lft forever preferred_lft forever
-...
+juan@unintended.vl@web:~$ ip route
+default via 10.10.235.17 dev ens5 proto dhcp src 10.10.235.22 metric 100 
+10.10.0.2 via 10.10.235.17 dev ens5 proto dhcp src 10.10.235.22 metric 100 
+10.10.235.16/28 dev ens5 proto kernel scope link src 10.10.235.22 metric 100 
+10.10.235.17 dev ens5 proto dhcp scope link src 10.10.235.22 metric 100 
+172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1 linkdown 
+172.18.0.0/16 dev br-9f7c921da56a proto kernel scope link src 172.18.0.1 
+172.19.0.0/16 dev br-1c74e0922629 proto kernel scope link src 172.19.0.1 
+172.21.0.0/16 dev br-d2d8c10f2c77 proto kernel scope link src 172.21.0.1 
 ```
 
 The potential subnets are `172.17.0.0/16`, `172.18.0.0/16`, `172.19.0.0/16` and `172.21.0.0/16`.
