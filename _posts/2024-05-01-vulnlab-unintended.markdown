@@ -2208,3 +2208,5 @@ duplicati-20240502T025339Z.dlist.zip  duplicati-ba1abdf89a9af488ebe1b800f48517ff
 juan@unintended.vl@web:~$ cat /tmp/flag/flag.txt
 VL{...}
 ```
+
+The method showed above lets us not only read but also write arbitrary files as root on the host. We can achieve that by creating the file inside the SSH session as juan, specifying it as the backup source, then restoring it to the desired destination folder. We could then easily get interactive shell access as root, for example by [overwriting /etc/passwd](https://www.hackingarticles.in/editing-etc-passwd-file-for-privilege-escalation/) or with [various other tricks](https://book.hacktricks.xyz/linux-hardening/privilege-escalation/write-to-root). See the Discord's master channel for an example of writing a malicious cron file to `/etc/cron.d`.
