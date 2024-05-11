@@ -1,0 +1,6 @@
+{
+    "markdown.copyFiles.destination": {
+        "/_posts/2024-05-11-vulnlab-build.markdown": "/assets/vulnlab/machines/build/img/${fileName}"
+    },
+    "markdown.updateLinksOnFileMove.enabled": "prompt"
+}
