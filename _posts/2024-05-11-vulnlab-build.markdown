@@ -302,7 +302,7 @@ We find one encrypted password:
 
 ```shell
 └─$ grep -re "^\s*<[a-zA-Z]*>{[a-zA-Z0-9=+/]*}<"
-jenkins_configuration/jobs/build/config.xml:              <password>{AQAAABAAAAAQUNBJaKiUQNaRbPI0/VMwB1cmhU/EHt0chpFEMRLZ9v0=}</password>
+jenkins_configuration/jobs/build/config.xml:              <password>{AQAAABAAAA<REDACTED>FEMRLZ9v0=}</password>
 ```
 
 It's for the user `buildadm`, the same username we found on Gitea:
@@ -321,7 +321,7 @@ It's for the user `buildadm`, the same username we found on Gitea:
               <id>e4048737-7acd-46fd-86ef-a3db45683d4f</id>
               <description></description>
               <username>buildadm</username>
-              <password>{AQAAABAAAAAQUNBJaKiUQNaRbPI0/VMwB1cmhU/EHt0chpFEMRLZ9v0=}</password>
+              <password>{AQAAABAAAA<REDACTED>FEMRLZ9v0=}</password>
               <usernameSecret>false</usernameSecret>
             </com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl>
           </java.util.concurrent.CopyOnWriteArrayList>
@@ -743,7 +743,7 @@ Searching on the Internet we can find a lot of documentation that explains the p
 
 ![alt text](../assets/vulnlab/machines/build/img/image-13.png)
 
-It's a configuration file for the `rlogin` and `rsh` services we inspected at the beginning. By port scanning `172.18.0.1` through `172.18.0.6` we will notice that the ports 512 to 514 are only open on `172.18.0.1`, which means that these services are likely only installed directly on the host and not inside a Docker container (just like the SSH service).
+It's a configuration file for the `rlogin` and `rsh` services we inspected at the beginning. By port scanning `172.18.0.1` through `172.18.0.6` we will notice that the ports 512 to 514 are only open on `172.18.0.1`, which means that these services are likely only installed directly on the host and not inside a Docker container (just like the SSH service). So why did we find it inside the Jenkins container?
 
 ```shell
 root@5ac6c7d6fb8e:~# findmnt
@@ -752,9 +752,9 @@ TARGET                  SOURCE                                                FS
 ├─/root                 /dev/mapper/ubuntu--vg-ubuntu--lv[/root/scripts/root] ext4    rw,relatime
 ```
 
-The `/root/scripts/root` directory on the host is mounted to `/root` on the Jenkins container, so at this point I assumed that the same `.rhosts` file may be present on the host too. It's possible that it was mistakenly mounted to the Jenkins container or that the admin wanted to configure remote access to Jenkins too at some point.
+The `/root/scripts/root` directory on the host is mounted to `/root` on the Jenkins container, so at this point I assumed that the same `.rhosts` file may be present on the host too under `/root`, which turned out to be true. It's possible that it was mistakenly mounted to the Jenkins container or that the admin wanted to configure remote access to the Jenkins container too at some point.
 
-The `.rhosts` entries indicate that remote connections from `admin.build.vl` and `intern.build.vl` are allowed to login as any user on the server (including `root`). The authentication procedure likely resolves the trusted domains to IP addresses using the PowerDNS server and check if the connection request comes from them.
+The `.rhosts` entries indicate that remote clients from `admin.build.vl` and `intern.build.vl` are allowed to login as any user on the server (including `root`). The authentication procedure likely resolves the trusted domains to IP addresses using the PowerDNS server and check if the connection request comes from them.
 
 Since the `admin.build.vl` record doesn't exist in the PowerDNS database and `intern.build.vl` resolves to `172.18.0.1`, it means that passwordless logins are only allowed from `172.18.0.1`, which is the host itself.
 
