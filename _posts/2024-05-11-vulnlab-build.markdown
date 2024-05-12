@@ -692,7 +692,7 @@ This one is interesting since we didn't find any port 80 in our `nmap` scan. I b
 
 ![alt text](../assets/vulnlab/machines/build/img/image-9.png)
 
-It's a [web interface for administering PowerDNS](https://github.com/PowerDNS-Admin/PowerDNS-Admin), which is different from the webserver on port 8081 we saw previously.
+It's a [web interface for administering PowerDNS](https://github.com/PowerDNS-Admin/PowerDNS-Admin), which is different from the built-in webserver on port 8081 we saw previously.
 
 In the database there's a hash for the user `admin`:
 
