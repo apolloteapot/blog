@@ -711,7 +711,7 @@ It cracks with `rockyou.txt` and hashcat mode 3200 after a short time:
 ```shell
 └─$ hashcat -a0 -m3200 '$2b$12$s1hK0o7YNkJGfu5poWx<REDACTED>' /usr/share/wordlists/rockyou.txt
 ...
-$2b$12$s1hK0o7YNkJGfu5poWx.0u1WLqKQIgJOXWjjXz7Ze3Uw5Sc2.hsEq:<REDACTED>
+$2b$12$s1hK0o7YNkJGfu5poWx<REDACTED>:<REDACTED>
 ```
 
 We can then login to the web interface with the cracked password as `admin` and fully administer the DNS server:
