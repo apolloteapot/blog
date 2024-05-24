@@ -376,7 +376,7 @@ I couldn't crack the password hash. However we get an email: `admin@build.vl`. W
 
 ## Gitea (as buildadm)
 
-We can login as `buildadm` with the password we just found.
+We can login to Gitea as `buildadm` with the password we just decrypted.
 
 <http://build.vl:3000/user/login>
 
@@ -396,7 +396,7 @@ We can now try to perform the attack mentioned earlier by editing the `Jenkinsfi
 
 ![alt text](../assets/vulnlab/machines/build/img/image-8.png)
 
-There's a webhook that triggers on push events and makes a POST request to `http://172.18.0.3:8080/gitea-webhook/post`. The `172.18.0.0/16` is a private address range also used by [Docker networks](https://docs.storagemadeeasy.com/appliance/docker_networking), so it's possible that the Jenkins instance is running on a Docker container with IP address `172.18.0.3`. We'll confirm this later after we get a reverse shell.
+There's a webhook that triggers on push events and makes a POST request to `http://172.18.0.3:8080/gitea-webhook/post`. The `172.18.0.0/16` is a private address range used for example by [Docker networks](https://docs.storagemadeeasy.com/appliance/docker_networking), so it's possible that the Jenkins instance is running on a Docker container with IP address `172.18.0.3`. We'll confirm this later after we get a reverse shell.
 
 Now we can edit the `Jenkinsfile` directly from the Gitea web interface at <http://build.vl:3000/buildadm/dev/_edit/main/Jenkinsfile> and [add a reverse shell](https://cloud.hacktricks.xyz/pentesting-ci-cd/jenkins-security/jenkins-rce-creating-modifying-pipeline) to it:
 
@@ -456,7 +456,7 @@ root@5ac6c7d6fb8e:~# ls -a /
 .  ..  .dockerenv  bin  boot  dev  etc  home  lib  lib32  lib64  libx32  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
 ```
 
-Given the use of Docker networking we can try to enumerate the network further to see if we can reach other containers or the host (our target running Docker) itself. We already know that our current IP address is `172.18.0.3`. Since it's a Docker container many commands like `ip` are not installed, but we can read the information directly from `/proc/net`.
+Given the use of Docker networking we can try to enumerate the network further to see if we can reach other containers or the host (the target machine itself running Docker). We already know that our current IP address is `172.18.0.3`. Since it's a Docker container many commands like `ip` are not installed, but we can read the information directly from `/proc/net`.
 
 Here's the routing table:
 
@@ -657,7 +657,7 @@ PORT     STATE SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 53.75 seconds
 ```
 
-This is the MariaDB instance we just got into, the port 3306 is just forwarded to the host so that we can reach it both at `172.18.0.1` and `172.18.0.4`.
+This is the container with the MariaDB instance we just got into, the port 3306 is forwarded to the host so that's why we can reach it both at `172.18.0.1` and `172.18.0.4`.
 
 ```shell
 └─$ proxychains -q nmap 172.18.0.5
@@ -672,7 +672,7 @@ PORT     STATE SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 53.28 seconds
 ```
 
-This is the PowerDNS instance with the webserver, also port-forwarded to the host.
+This is the PowerDNS container with the DNS service and the webserver, both port forwarded to the host.
 
 ```shell
 └─$ proxychains -q nmap 172.18.0.6
@@ -754,7 +754,7 @@ TARGET                  SOURCE                                                FS
 
 The `/root/scripts/root` directory on the host is mounted to `/root` on the Jenkins container, so at this point I assumed that the same `.rhosts` file may be present on the host too under `/root`, which turned out to be true. It's possible that it was mistakenly mounted to the Jenkins container or that the admin wanted to configure remote access to the Jenkins container too at some point.
 
-The `.rhosts` entries indicate that remote clients from `admin.build.vl` and `intern.build.vl` are allowed to login as any user on the server (including `root`). The authentication procedure likely resolves the trusted domains to IP addresses using the PowerDNS server and check if the connection request comes from them.
+The `.rhosts` entries indicate that remote clients originating from `admin.build.vl` and `intern.build.vl` are allowed to login as any user on the server (including `root`). The authentication procedure likely resolves the trusted domains to IP addresses using the PowerDNS server and check if the connection request comes from them.
 
 Since the `admin.build.vl` record doesn't exist in the PowerDNS database and `intern.build.vl` resolves to `172.18.0.1`, it means that passwordless logins are only allowed from `172.18.0.1`, which is the host itself.
 
