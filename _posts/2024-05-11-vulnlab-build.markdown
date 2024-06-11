@@ -467,7 +467,7 @@ eth0    00000000        010012AC        0003    0       0       0       00000000
 eth0    000012AC        00000000        0001    0       0       0       0000FFFF        0       0       0
 ```
 
-This [blog post](https://blog.oddbit.com/post/2015-03-08-converting-hexadecimal-ip-addr/) explains that the addresses are in little-endian and hex. By converting we find out that the default gateway is `172.18.0.1` and that the subnet used is `172.18.0.0./16`. We can deduce that `172.18.0.1` is the Docker host and that the containers have IP addresses starting from `172.18.0.2`.
+This [blog post](https://blog.oddbit.com/post/2015-03-08-converting-hexadecimal-ip-addr/) explains that the addresses are in little-endian and hex. By converting we find out that the default gateway is `172.18.0.1` and that the subnet used is `172.18.0.0/16`. We can deduce that `172.18.0.1` is the Docker host and that the containers have IP addresses starting from `172.18.0.2`.
 
 In the `nmap` scan we found that port 3306 and 8081 were filtered, but we may be able to reach them now that we're inside the internal Docker subnet. Let's check:
 
