@@ -4,7 +4,7 @@ title:  "Vulnlab - Build"
 date:   2024-05-11 00:00:00 +0200
 categories: vulnlab
 permalink: "/vulnlab-build"
-excerpt: "Build is an easy difficulty machine on Vulnlab created by xct."
+excerpt: "Build is an easy difficulty machine on Vulnlab (now migrated as a medium difficulty machine on HTB) created by xct."
 ---
 
 {{ page.excerpt }}
