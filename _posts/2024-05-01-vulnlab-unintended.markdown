@@ -4,7 +4,7 @@ title:  "Vulnlab - Unintended"
 date:   2024-05-01 00:00:00 +0200
 categories: vulnlab
 permalink: "/vulnlab-unintended"
-excerpt: "Unintended is a medium difficulty chain on Vulnlab created by kavigihan."
+excerpt: "Unintended was a medium difficulty chain on Vulnlab (now migrated as a mini pro lab on Hack The Box) created by kavigihan."
 ---
 
 {{ page.excerpt }}
